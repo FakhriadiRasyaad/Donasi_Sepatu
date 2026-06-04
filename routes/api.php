@@ -1,5 +1,5 @@
 <?php
-
+// asdsd
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DonationController;
@@ -66,8 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin')->middleware('role:admin')->group(function () {
 
         // Donasi management
-        Route::get('donations',         [AdminDonationController::class, 'index']);
-        Route::patch('donations/{id}',  [AdminDonationController::class, 'updateStatus']);
+        Route::get('donations',              [AdminDonationController::class, 'index']);
+        Route::patch('donations/{id}',       [AdminDonationController::class, 'updateStatus']);
+        Route::post('donations/{id}/update', [AdminDonationController::class, 'updateWithPhoto']);
 
         // CMS konten
         Route::get('content',           [AdminContentController::class, 'index']);
@@ -75,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('content/image',    [AdminContentController::class, 'uploadImage']);
 
         // Reward management
+        Route::get('rewards/claims',    [AdminRewardController::class, 'claims']);
         Route::apiResource('rewards', AdminRewardController::class)
              ->only(['index', 'store', 'update', 'destroy']);
 

@@ -20,12 +20,21 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
         ]);
 
-        // Izinkan semua request ke /api (CORS dihandle via config/cors.php)
-        $middleware->statefulApi();
+        /*
+         * Jangan aktifkan statefulApi() untuk project ini.
+         *
+         * Alasannya:
+         * - Frontend kamu pakai request API JSON.
+         * - Backend login/register sudah berhasil via Postman.
+         * - Auth memakai Sanctum token/Bearer token.
+         * - Kalau statefulApi() aktif, request dari browser bisa dianggap
+         *   sebagai cookie/session-based request, lalu Laravel minta CSRF token.
+         */
+        // $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions) {
 
-        // Kembalikan semua exception sebagai JSON untuk API
+        // Kembalikan semua validation exception sebagai JSON untuk API
         $exceptions->render(function (ValidationException $e, Request $request) {
             return response()->json([
                 'status'  => 'error',
@@ -34,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 422);
         });
 
+        // Kembalikan semua authentication exception sebagai JSON untuk API
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             return response()->json([
                 'status'  => 'error',
@@ -41,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 401);
         });
 
+        // Kembalikan not found sebagai JSON
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, Request $request) {
             return response()->json([
                 'status'  => 'error',

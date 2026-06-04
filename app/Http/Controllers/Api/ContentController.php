@@ -27,19 +27,21 @@ class ContentController extends Controller
 
         // 4 sepatu untuk display homepage
         $displaySepatu = Donation::publicDisplay()
-            ->with('user:id,nama')
-            ->limit(4)
-            ->get()
-            ->map(fn ($d) => [
-                'id'           => $d->id,
-                'nama_sepatu'  => $d->nama_sepatu,
-                'ukuran'       => $d->ukuran,
-                'kondisi'      => $d->kondisi,
-                'foto_url'     => $d->foto_url,
-                'status'       => $d->status,
-                'nama_donatur' => $d->user->nama,
-                'created_at'   => $d->created_at,
-            ]);
+    ->with('user:id,nama')
+    ->limit(4)
+    ->get()
+    ->map(fn ($d) => [
+        'id'             => $d->id,
+        'nama_sepatu'    => $d->nama_sepatu,
+        'ukuran'         => $d->ukuran,
+        'kondisi'        => $d->kondisi,
+        'harga'          => $d->harga,
+        'foto_url'       => $d->foto_url,
+        'foto_bukti_url' => $d->foto_bukti_url,
+        'status'         => $d->status,
+        'nama_donatur'   => $d->user->nama,
+        'created_at'     => $d->created_at,
+    ]);
 
         // Statistik ringkas
         $stats = Donation::selectRaw("

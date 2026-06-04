@@ -13,6 +13,7 @@ class UserReward extends Model
         'user_id',
         'reward_id',
         'minggu_ke',
+        'unique_code',
         'claimed_at',
     ];
 

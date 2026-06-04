@@ -9,6 +9,7 @@ use App\Models\UserReward;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class RewardController extends Controller
 {
@@ -17,36 +18,37 @@ class RewardController extends Controller
     // ── GET /api/rewards ──────────────────────────────────────────────
 
     public function index(Request $request): JsonResponse
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        $last = DailyLogin::where('user_id', $user->id)
-            ->orderByDesc('tanggal_checkin')->first();
+    // Ambil semua reward yang aktif saja (tanpa filter minggu)
+    $rewards = Reward::where('status_aktif', true)
+        ->get(['id', 'nama_reward', 'jenis', 'deskripsi', 'nilai', 'kode_kupon', 'berlaku_dari', 'berlaku_sampai']);
 
-        $mingguKe = $last?->minggu_ke ?? 1;
+    // Cek reward mana yang sudah diklaim user ini
+    $claimedRewards = UserReward::where('user_id', $user->id)
+        ->get(['reward_id', 'unique_code'])
+        ->keyBy('reward_id');
 
-        $rewards = Reward::active()
-            ->where('minggu_ke', $mingguKe)
-            ->get(['id', 'nama_reward', 'jenis', 'deskripsi', 'nilai', 'berlaku_dari', 'berlaku_sampai']);
+    $rewards = $rewards->map(function ($r) use ($claimedRewards) {
+        $claimed = $claimedRewards->get($r->id);
+        return [
+            'id'           => $r->id,
+            'nama_reward'  => $r->nama_reward,
+            'jenis'        => $r->jenis,
+            'deskripsi'    => $r->deskripsi,
+            'nilai'        => $r->nilai,
+            'sudah_diklaim'=> $claimed !== null,
+            'unique_code'  => $claimed ? $claimed->unique_code : null,
+        ];
+    });
 
-        // Tandai reward yang sudah diklaim
-        $claimedIds = UserReward::where('user_id', $user->id)
-            ->where('minggu_ke', $mingguKe)
-            ->pluck('reward_id');
-
-        $rewards = $rewards->map(fn ($r) => array_merge($r->toArray(), [
-            'sudah_diklaim' => $claimedIds->contains($r->id),
-        ]));
-
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'Berhasil',
-            'data'    => [
-                'minggu_ke' => $mingguKe,
-                'rewards'   => $rewards,
-            ],
-        ]);
-    }
+    return response()->json([
+        'status'  => 'success',
+        'message' => 'Berhasil',
+        'data'    => ['rewards' => $rewards],
+    ]);
+}
 
     // ── POST /api/rewards/{id}/claim ──────────────────────────────────
 
@@ -110,13 +112,17 @@ class RewardController extends Controller
             }
         }
 
+        // Generate unique code
+        $uniqueCode = 'RW-' . strtoupper(Str::random(8));
+
         // Transaksi: simpan klaim + update flag hari ke-7
-        DB::transaction(function () use ($user, $reward, $mingguKe) {
+        DB::transaction(function () use ($user, $reward, $mingguKe, $uniqueCode) {
             UserReward::create([
-                'user_id'   => $user->id,
-                'reward_id' => $reward->id,
-                'minggu_ke' => $mingguKe,
-                'claimed_at'=> now(),
+                'user_id'    => $user->id,
+                'reward_id'  => $reward->id,
+                'minggu_ke'  => $mingguKe,
+                'unique_code'=> $uniqueCode,
+                'claimed_at' => now(),
             ]);
 
             DailyLogin::where('user_id', $user->id)
@@ -135,6 +141,7 @@ class RewardController extends Controller
                     'deskripsi'  => $reward->deskripsi,
                     'kode_kupon' => $reward->kode_kupon,
                     'nilai'      => $reward->nilai,
+                    'unique_code'=> $uniqueCode,
                 ],
             ],
         ]);

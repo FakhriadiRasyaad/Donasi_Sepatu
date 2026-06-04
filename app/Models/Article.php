@@ -1,83 +1,58 @@
 <?php
-// app/Models/Article.php
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class Article extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
-        'user_id',
-        'category_id',
-        'title',
+        'judul',
         'slug',
-        'excerpt',
-        'content',
-        'featured_image',
+        'foto_path',
+        'ringkasan',
+        'konten',
+        'kategori',
         'status',
+        'author_id',
         'published_at',
     ];
 
-    protected $casts = [
-        'published_at' => 'datetime',
-    ];
-
-    // Event untuk generate slug otomatis
-    protected static function boot()
+    protected function casts(): array
     {
-        parent::boot();
-
-        static::creating(function ($article) {
-            if (!$article->slug) {
-                $article->slug = Str::slug($article->title);
-            }
-        });
-
-        static::updating(function ($article) {
-            $article->slug = Str::slug($article->title);
-        });
+        return [
+            'published_at' => 'datetime',
+        ];
     }
 
-    // Relasi dengan User (author)
-    public function user()
+    public static function generateSlug(string $judul): string
     {
-        return $this->belongsTo(User::class);
+        $base  = Str::slug($judul);
+        $slug  = $base;
+        $count = 1;
+
+        while (static::where('slug', $slug)->exists()) {
+            $slug = $base . '-' . $count;
+            $count++;
+        }
+
+        return $slug;
     }
 
-    // Relasi dengan Category
-    public function category()
+    public function author(): BelongsTo
     {
-        return $this->belongsTo(ArticleCategory::class);
+        return $this->belongsTo(User::class, 'author_id');
     }
 
-    // Relasi dengan Tags (many-to-many)
-    public function tags()
+    public function getFotoUrlAttribute(): ?string
     {
-        return $this->belongsToMany(Tag::class, 'article_tag');
+        return $this->foto_path ? asset('storage/' . $this->foto_path) : null;
     }
 
-    // Scope untuk artikel yang published
     public function scopePublished($query)
     {
-        return $query->where('status', 'published')
-                     ->whereNotNull('published_at')
-                     ->where('published_at', '<=', now());
-    }
-
-    // Scope untuk artikel draft
-    public function scopeDraft($query)
-    {
-        return $query->where('status', 'draft');
-    }
-
-    // Increment views
-    public function incrementViews()
-    {
-        $this->increment('views');
+        return $query->where('status', 'published')->latest('published_at');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reward;
+use App\Models\UserReward;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -24,6 +25,27 @@ class AdminRewardController extends Controller
         return response()->json([
             'status' => 'success', 'message' => 'Berhasil',
             'data'   => ['rewards' => $rewards],
+        ]);
+    }
+
+    public function claims(Request $request): JsonResponse
+    {
+        $claims = UserReward::with(['user:id,nama,email', 'reward:id,nama_reward,jenis'])
+            ->latest('claimed_at')
+            ->paginate($request->integer('per_page', 20));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Berhasil',
+            'data' => [
+                'claims' => $claims->items(),
+                'pagination' => [
+                    'total' => $claims->total(),
+                    'per_page' => $claims->perPage(),
+                    'current_page' => $claims->currentPage(),
+                    'last_page' => $claims->lastPage(),
+                ],
+            ],
         ]);
     }
 
